@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 )
 
 var pattern = regexp.MustCompile(`(?m)^(?P<key>.+?)\s*=\s*(?P<value>.+?)$`)
 
 type Config struct {
-	Names []string
+	Names  []string
+	Prefix string
 }
 
 func (c *Config) Load() {
@@ -18,9 +20,11 @@ func (c *Config) Load() {
 			fmt.Println(err)
 		} else {
 			for _, loc := range pattern.FindAllSubmatchIndex(b, -1) {
-				key, value := b[loc[2]:loc[3]], b[loc[4]:loc[5]]
-				if err := os.Setenv(string(key), string(value)); err != nil {
-					fmt.Println()
+				key, value := string(b[loc[2]:loc[3]]), string(b[loc[4]:loc[5]])
+				if strings.HasPrefix(key, c.Prefix) {
+					if err := os.Setenv(key, value); err != nil {
+						fmt.Println()
+					}
 				}
 			}
 		}
@@ -29,7 +33,7 @@ func (c *Config) Load() {
 }
 
 func (c *Config) Get(key string, defaultValue ...string) string {
-	v := os.Getenv(key)
+	v := os.Getenv(c.Prefix + key)
 	if len(defaultValue) > 0 && v == "" {
 		return defaultValue[0]
 	}
